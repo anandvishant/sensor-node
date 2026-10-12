@@ -1,22 +1,24 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+const uint8_t ADDR   = 0x76; // This is the addr where we 
+const uint8_t REG_ID = 0xD0;
+
+uint8_t readReg(uint8_t reg) {
+  Wire.beginTransmission(ADDR);
+  Wire.write(reg);                      // "I want register 0xD0"
+  Wire.endTransmission(false);
+  Wire.requestFrom(ADDR, (uint8_t)1);   // "send me 1 byte"
+  return Wire.read();
+}
+
 void setup() {
   Serial.begin(115200);
-  Wire.begin(21, 22);          // SDA = 21, SCL = 22
-  Serial.println("I2C scanner");
+  Wire.begin(21, 22);
 }
 
 void loop() {
-  int found = 0;
-  for (uint8_t addr = 1; addr < 127; addr++) {
-    Wire.beginTransmission(addr);          // knock on this address
-    if (Wire.endTransmission() == 0) {     // 0 means someone answered
-      Serial.print("Found device at 0x");
-      Serial.println(addr, HEX);
-      found++;
-    }
-  }
-  if (found == 0) Serial.println("No devices found");
-  delay(3000);
+  Serial.print("Chip ID: 0x");
+  Serial.println(readReg(REG_ID), HEX);
+  delay(60000);
 }
