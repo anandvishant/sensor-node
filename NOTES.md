@@ -32,3 +32,17 @@ DEBOUNCE_MS = 0	slam	accepted 38, raw 38 (no bounce)
 DEBOUNCE_MS = 0	slow press	accepted 22, raw 28
 DEBOUNCE_MS = 150	10 slow presses	accepted 12
 DEBOUNCE_MS = 50	20 slow presses	accepted 20, raw 27, one press miscounted
+
+1. Interrupt vs polling: correct. The interrupt pauses whatever the chip is doing and records the press right away, so a tap during delay() isn’t lost. One refinement: the polling code does see the button, just too rarely, so a short tap falls between checks. The interrupt doesn’t depend on when the code looks.
+
+2. Serial.println in an ISR: this is the weak one. “ISR only handles interrupts” restates the rule without giving the reason. The reason is:
+
+While the ISR runs, everything else on the chip is paused, so it has to finish in microseconds.
+Serial.println is slow. It formats text and pushes bytes through a buffer that normal code may be using at that very moment.
+That buffer is protected by locks, and waiting on a lock inside an ISR can freeze or crash the chip. On the ESP32 you’d often get a reboot with a “Guru Meditation Error”.
+
+So the ISR just notes what happened (the counter and the flag), and loop() does the slow printing. Rewrite your answer with that in mind, for example: “Printing is slow and uses locks and buffers, and an ISR must be short, so it sets a flag and loop() prints.”
+
+3. volatile: correct. A tighter version: it tells the compiler this variable can change outside the normal flow of the code, such as inside an ISR, so it must re-read the real value every time and not reuse an old copy.
+
+4. Debouncing: correct. One accuracy fix: the 50 ms isn’t a delay the chip waits through. It’s a window. The chi
