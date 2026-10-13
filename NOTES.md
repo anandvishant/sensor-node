@@ -76,6 +76,23 @@ the code was wrong.
 - Gaps of 1000 to 5000 ms always worked. 5500, 6000 and 8000 ms failed on the
   first read (0xFF, Error -1).
 - A retry 50 ms later worked every time.
-- Fix: readRegRetry() checks for an ACK and a received byte, and tries up to
-  3 times.
-- Cause: unknown. Next step is a logic analyzer.
+
+
+**Final code: readings with the Adafruit library**
+- Added `lib_deps = adafruit/Adafruit BME280 Library` to platformio.ini, so PlatformIO downloads the library.
+- `bme.begin(0x76)` sets up the sensor and checks that it answers. If it doesn't, the code prints "BME280 not found" and stops.
+- `bme.readTemperature()`, `bme.readHumidity()` and `bme.readPressure()` return real units (C, % and Pa). I divide the pressure by 100 to print hPa.
+- The library does the register reads and the calibration math that I did by hand earlier. Doing it by hand first showed me what the library is doing.
+- The frozen values (23.44 C, 77.96 %, 671.33 hPa) were the library converting a placeholder raw value (0x800000), meaning no measurement had happened.
+this froze becayuse the conncetion awwsnt correct or something. earlier it was hanging rather than placed ibn breadboard. after they are postiionedd in bread board it startedd to ddisplay accurate measurments. like below
+- Result: about 29.6 C, 41 % RH and 984 hPa, against a wall thermometer reading 27 C and 48 %. The difference is plausible, since the sensor warms slightly and the wall thermometer sits elsewhere.
+
+What did the I2C scanner do, and what did it find?
+The code was used to scan the aaddress the device is at. meaning the hex addres of that sensor between 1 to 127 devices in for loop
+Why did the first read fail after a long wait, and what did you do about it?
+For some reason if read is after 5s(5000ms) it seems to fail and in order to check that's really the case. added a delay(50) and checked againt it suceeded. Later I found endTransmission(false) gave Error -1 on the ESP32, and endTransmission() fixed it. I haven't re-tested the 5 s gap since, so I'm not sure the delay was the real cause.
+What was actually wrong when the readings froze, and how did you fix it? probably due to unstable way the senor was placed physcially and switching to bread board fixed it
+
+What does the Adafruit library do for you that the hand-written code didn’t?
+its has bme sensor reallted tfunctions to check sensor related readings
+What would you check first next time a sensor doesn’t answer? Conncetions 
