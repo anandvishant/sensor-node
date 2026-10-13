@@ -1,49 +1,36 @@
 #include <Arduino.h>
+#include <Wire.h>
 
-const int LED_PIN = 2;
-const int BUTTON_PIN = 4;
-const uint32_t DEBOUNCE_MS = 50;
-const uint32_t LOOP_DELAY_MS = 0;   // start at 1000, later change to 0
+const uint8_t ADDR   = 0x76;   // BME280 I2C address (SDO low)
+const uint8_t REG_ID = 0xD0;   // chip ID register
 
-volatile uint32_t pressCount = 0;      // shared with the ISR
-volatile uint32_t lastPressMs = 0;     // time of last accepted press
-volatile bool pressedFlag = false;     // ISR sets, loop() clears
-volatile uint32_t rawPresses = 0;
-
-bool ledOn = false;
-
-// ISR: runs the instant the button pin goes HIGH -> LOW
-void IRAM_ATTR onButtonPress() {
-  rawPresses++;                          // counts EVERY edge, even bounces
-  uint32_t now = millis();
-  if (now - lastPressMs > DEBOUNCE_MS) {
-    pressCount++;                        // counts only accepted presses
-    pressedFlag = true;
-    lastPressMs = now;
+// Returns true on success and stores the byte in `out`
+bool readRegRetry(uint8_t reg, uint8_t &out, int tries = 3) {
+  for (int i = 0; i < tries; i++) {
+    Wire.beginTransmission(ADDR);
+    Wire.write(reg);
+    if (Wire.endTransmission(false) == 0 &&
+        Wire.requestFrom(ADDR, (uint8_t)1) == 1) {
+      out = Wire.read();
+      return true;
+    }
+    delay(10);                 // brief pause, then try again
   }
+  return false;                // gave up after `tries` attempts
 }
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), onButtonPress, FALLING);
-  Serial.println("Booted! Interrupt armed.");
+  Wire.begin(21, 22);
 }
+
 void loop() {
-  static uint32_t lastPrint = 0;         // keeps its value between calls
-
-  if (pressedFlag) {
-    pressedFlag = false;
-    ledOn = !ledOn;
-    digitalWrite(LED_PIN, ledOn);
+  uint8_t id;
+  if (readRegRetry(REG_ID, id)) {
+    Serial.print("Chip ID: 0x");
+    Serial.println(id, HEX);
+  } else {
+    Serial.println("Read failed after retries");
   }
-
-  if (millis() - lastPrint >= 2000) {
-    lastPrint = millis();
-    Serial.print("accepted: ");
-    Serial.print(pressCount);
-    Serial.print("   raw edges: ");
-    Serial.println(rawPresses);
-  }
-} 
+  delay(1000);                 // keep the failing gap on purpose to test the fix
+}
