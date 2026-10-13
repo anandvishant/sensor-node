@@ -1,6 +1,6 @@
 # Bug journal
 
-Day1:
+## Day1:
 i connected and set the project.
 
 Experiment 1:
@@ -17,7 +17,7 @@ commented baud rate   //Serial.begin(115200);
 and this chnaged something. when tested by pressing the button. While the blue light lighted on board. it didnt print anyything on serial monitor terminal. Like "Button pressed" . i Think this is due to UART utilizes baud rate  for  communication and transffer of that data?
 
 
-Day2
+## Day2
 Experiment 1:
 in loop delay at 1000ms. it counts button press all the time using ISR but doesnt print because there is a 1 sec(1000ms) delay in calling the loop()
 
@@ -46,3 +46,36 @@ So the ISR just notes what happened (the counter and the flag), and loop() does 
 3. volatile: correct. A tighter version: it tells the compiler this variable can change outside the normal flow of the code, such as inside an ISR, so it must re-read the real value every time and not reuse an old copy.
 
 4. Debouncing: correct. One accuracy fix: the 50 ms isn’t a delay the chip waits through. It’s a window. The chi
+
+
+## Day 3: I2C sensor (BME280)
+
+**I2C:** two shared wires, SDA (data) and SCL (clock). Each device has an
+address, and the ESP32 talks to it by address.
+
+**Scanner:** the for loop tries addresses 1 to 126. If a device answers,
+endTransmission() returns 0, so it prints the address and adds 1 to found.
+The loop does not stop at the first hit, so it lists every device. found is
+declared inside loop(), so it resets to 0 on every scan. If found is still 0
+after the loop, it prints "No devices found". Result: found 0x76.
+
+**Chip ID:** register 0xD0 returned 0x60, so the sensor is a real BME280
+(a BMP280 would return 0x58).
+
+**Experiments**
+| Test | What happened | Why |
+|---|---|---|
+| Pulled SDA | read returned 0xFF, Error -1 | nobody answered |
+| ADDR = 0x77 | same 0xFF, Error -1 | sensor is at 0x76, nothing answers 0x77 |
+
+Both gave the same error, so the error alone can't tell a wiring fault from a
+wrong address. The scanner can: it still finds 0x76 if only the address in
+the code was wrong.
+
+**Bug: first read after a long gap fails**
+- Gaps of 1000 to 5000 ms always worked. 5500, 6000 and 8000 ms failed on the
+  first read (0xFF, Error -1).
+- A retry 50 ms later worked every time.
+- Fix: readRegRetry() checks for an ACK and a received byte, and tries up to
+  3 times.
+- Cause: unknown. Next step is a logic analyzer.
