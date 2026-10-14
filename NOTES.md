@@ -96,3 +96,19 @@ What was actually wrong when the readings froze, and how did you fix it? probabl
 What does the Adafruit library do for you that the hand-written code didn’t?
 its has bme sensor reallted tfunctions to check sensor related readings
 What would you check first next time a sensor doesn’t answer? Conncetions 
+
+## Day 4
+What is a task, and how is it different from the single loop() of Day 3?
+Task is operation. In freeRTOS, this OS helps in running tasks simulataneouly in a safe way and in terms of loop in day 3 we are just grabbing temp as its going on and not using tasks or queues to manage. But usign rtos helps and is good for large scale measurements and tasks managing. might not be big deal in this small project
+
+What does the queue do, and what happened when the printer was slower than the sensor?
+Queue stores the readings. this is a data structure, its a way to store the data in FIFO process. And when printer was slower than sensor. we were getting measurements with delay and that delay might not cause us to see latest reading rather it prints old reading in sequential way and this might result ot see the readings thats printed. but they are old 
+
+What would you do about it in a real product?
+in real product if there is delay i wouldd wnat to delete top of ques and print reading bottomn of que to represnet accurate info
+
+Does a task waiting on the queue waste CPU?
+No. A task waiting on the queue is in the Blocked state, so the FreeRTOS scheduler doesn't run it and it uses no CPU until a reading arrives. The scheduler decides which task gets the CPU and when.
+
+vTaskDelay vs delay()?
+On the ESP32, delay() already calls vTaskDelay(), so there's no difference on my board. vTaskDelay is the clearer, portable FreeRTOS choice, and it sleeps for a number of scheduler ticks. A real busy-wait would hog the CPU and starve other tasks.
