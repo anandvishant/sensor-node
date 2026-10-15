@@ -12,21 +12,22 @@ struct Reading {
 };
 
 QueueHandle_t readingQueue;   // the mailbox
+enum State { RUNNING, PAUSED };
+volatile State state = RUNNING;           // current state
+volatile uint32_t intervalMs = 1000;      // how often the sensor reads
 
-// TASK 1: reads the sensor and puts the result in the mailbox
 void sensorTask(void *param) {
   while (true) {
-    Reading r;
-    r.temperature = bme.readTemperature();
-    r.humidity    = bme.readHumidity();
-    r.pressure    = bme.readPressure() / 100.0F;
-
-    xQueueSend(readingQueue, &r, 0);     // drop it in the mailbox
-
-    vTaskDelay(pdMS_TO_TICKS(1000));     // sleep 1 s, other tasks can run
+    if (state == RUNNING) {                 // only read when running
+      Reading r;
+      r.temperature = bme.readTemperature();
+      r.humidity    = bme.readHumidity();
+      r.pressure    = bme.readPressure() / 100.0F;
+      xQueueSend(readingQueue, &r, 0);
+    }
+    vTaskDelay(pdMS_TO_TICKS(intervalMs));  // sleep for the current interval
   }
 }
-
 // TASK 2: waits for mail, then prints it
 void printTask(void *param) {
   while (true) {
@@ -40,6 +41,55 @@ void printTask(void *param) {
       Serial.print(r.pressure);
       Serial.println(" hPa");
     }
+    
+  }
+}
+
+void handleCommand(String line) {
+  line.trim();                              // remove stray spaces
+
+  if (line == "pause") {
+    state = PAUSED;
+    Serial.println("OK paused");
+  } else if (line == "resume") {
+    state = RUNNING;
+    Serial.println("OK running");
+  } else if (line == "status") {
+    Serial.print("State: ");
+    Serial.print(state == RUNNING ? "RUNNING" : "PAUSED");
+    Serial.print("  interval: ");
+    Serial.print(intervalMs);
+    Serial.println(" ms");
+  } else if (line.startsWith("interval ")) {
+    long v = line.substring(9).toInt();     // the part after "interval "
+    if (v >= 100 && v <= 60000) {
+      intervalMs = v;
+      Serial.print("OK interval ");
+      Serial.println(v);
+    } else {
+      Serial.println("ERR interval must be a number from 100 to 60000");
+    }
+  } else {
+    Serial.print("ERR unknown command: ");
+    Serial.println(line);
+  }
+}
+// TASK 3: listens for typed characters and builds them into lines
+void commandTask(void *param) {
+  String line = "";
+  while (true) {
+    while (Serial.available() > 0) {
+      char c = Serial.read();
+      if (c == '\n' || c == '\r') {
+        if (line.length() > 0) {
+          handleCommand(line);      // <-- replaces the three "Got:" lines
+          line = "";
+        }
+      } else {
+        line += c;
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
@@ -56,6 +106,7 @@ void setup() {
 
   xTaskCreate(sensorTask, "sensor", 4096, NULL, 1, NULL);
   xTaskCreate(printTask,  "print",  4096, NULL, 1, NULL);
+  xTaskCreate(commandTask, "command", 4096, NULL, 1, NULL);
 }
 
 void loop() {
