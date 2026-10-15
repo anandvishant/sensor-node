@@ -66,6 +66,27 @@
 | FIFO | first in, first out; oldest comes out first |
 | Queue full | producer faster than consumer; new items are dropped or the sender waits |
 
+## UART commands and state machine (Day 5)
+| Item | What it does |
+|---|---|
+| `Serial.available()` | how many typed characters are waiting |
+| `Serial.read()` | take one character from the input |
+| Line buffer | add characters to a String until Enter arrives, then treat it as one message |
+| `line.trim()` | remove spaces and stray characters at the ends |
+| `line == "pause"` | compare the whole text |
+| `line.startsWith("interval ")` | check how a command begins |
+| `line.substring(9)` | the part of the text after position 9 |
+| `.toInt()` | turn text into a number; text like "abc" gives 0 |
+| `enum State { RUNNING, PAUSED }` | a named list of states |
+| State machine | always in one state; events (commands) move it between states |
+| Shared variable between tasks | mark it `volatile`; fine for a single value, proper locking comes later |
+| Input validation | never trust serial input; check ranges and reject bad values with an ERR message |
+| `monitor_filters = send_on_enter` | PlatformIO monitor sends the whole line on Enter |
+| `monitor_echo = yes` | monitor shows what you type |
+| `monitor_eol = LF` | Enter sends a plain newline |
+| Git order | create the branch first (`git switch -c`), then commit |
+| `git branch -f main origin/main` | move local main back to match GitHub |
+
 ## Git (all days)
 | Command | What it does |
 |---|---|

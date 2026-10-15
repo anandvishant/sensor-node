@@ -112,3 +112,17 @@ No. A task waiting on the queue is in the Blocked state, so the FreeRTOS schedul
 
 vTaskDelay vs delay()?
 On the ESP32, delay() already calls vTaskDelay(), so there's no difference on my board. vTaskDelay is the clearer, portable FreeRTOS choice, and it sleeps for a number of scheduler ticks. A real busy-wait would hog the CPU and starve other tasks.
+
+
+## Day 5: UART commands and a state machine
+What is a state machine, using RUNNING and PAUSED?
+A state machine means the system is always in exactly one state (RUNNING or PAUSED), and events, like the commands pause and resume, move it from one state to another. What the sensor task does depends on the state: when RUNNING it reads the sensor, and when PAUSED it skips the reading.
+
+What does handleCommand do, and how do the commands reach the sensor task?**
+It takes the state that we want and applies it to the sensor task. It reaches the sensor task through the shared variables `state` and `intervalMs` in this code.
+
+Why check that interval is a number from 100 to 60000?
+Serial input can't be trusted. Text like "abc" becomes 0, and a very small or very large number would make the sensor read too fast or look frozen, so the code rejects bad values with an ERR message.
+
+Why does a new interval not apply right away?
+The sensor task is already in the earlier interval, still sleeping for that many milliseconds. It only uses the new value when its next sleep starts.
