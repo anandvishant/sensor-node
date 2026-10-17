@@ -87,6 +87,25 @@
 | Git order | create the branch first (`git switch -c`), then commit |
 | `git branch -f main origin/main` | move local main back to match GitHub |
 
+## Python on the PC (Day 6)
+| Item | What it does |
+|---|---|
+| `python --version`, `pip install pyserial` | check Python; install a library (import it as `serial`) |
+| `serial.Serial(PORT, BAUD, timeout=1)` | open the COM port; `timeout` stops readline() waiting forever |
+| `ser.readline()` | read one line of bytes |
+| `.decode("utf-8", errors="replace")` | bytes to text; `.encode()` goes the other way |
+| `ser.write(...)` | send bytes to the ESP32 |
+| `ser.reset_input_buffer()` | throw away old unread data |
+| `re.compile(...)`, `match.groups()` | find numbers inside a line of text |
+| `float(x)` | text to a decimal number |
+| `csv.writer(f).writerow([...])` | write one row to a CSV file |
+| `open(file, "a")` | append; `"w"` erases the file first |
+| `with ... as ...:` | open something and close it automatically |
+| `try: ... except KeyboardInterrupt:` | stop cleanly on Ctrl+C |
+| One COM port, one program | the logger and the Serial Monitor can't run together |
+| Opening the port | resets the ESP32, so wait about 2 s |
+
+
 ## Git (all days)
 | Command | What it does |
 |---|---|

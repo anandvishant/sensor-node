@@ -126,3 +126,17 @@ Serial input can't be trusted. Text like "abc" becomes 0, and a very small or ve
 
 Why does a new interval not apply right away?
 The sensor task is already in the earlier interval, still sleeping for that many milliseconds. It only uses the new value when its next sleep starts.
+
+## Day 6: Python on the PC
+
+**Why part Python and part C++?**
+The C++ runs on the ESP32 and talks to the hardware. The Python runs on my PC for tools: logging data, running scripts and tests. They talk to each other over UART.
+
+**What does the logger do?**
+It logs all the sensor data to a CSV file. It uses a regex pattern to pick out the sensor lines and ignore everything else, like boot messages.
+
+**What does send_commands.py do?**
+It sends a fixed list of commands to the ESP32 and prints the replies, so the test runs the same way every time without me typing. The state machine is on the ESP32, and this script just tests it.
+
+**Why can't the logger and the Serial Monitor run together?**
+Only one program can open a COM port at a time. Opening the port also resets the ESP32, so I see boot messages and the script waits 2 seconds.
