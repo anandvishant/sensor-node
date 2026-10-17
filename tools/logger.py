@@ -1,14 +1,35 @@
+import csv
+import os
+import re
 import serial
-import time
+from datetime import datetime
 
-PORT = "COM3"      # the port from your PlatformIO monitor
-BAUD = 115200      # must match Serial.begin(115200) on the ESP32
+PORT = "COM3"
+BAUD = 115200
+CSV_FILE = "readings.csv"
 
-with serial.Serial(PORT, BAUD, timeout=1) as ser:
-    time.sleep(2)                      # the ESP32 restarts when the port opens; let it boot
-    end = time.time() + 10             # run for 10 seconds
-    while time.time() < end:
-        raw = ser.readline()           # wait for one line, up to 1 second
-        line = raw.decode("utf-8", errors="replace").strip()
-        if line:                       # skip empty reads
-            print(line)
+# Matches: Temp: 23.54 C   Humidity: 36.86 %   Pressure: 1000.81 hPa
+PATTERN = re.compile(
+    r"Temp:\s*([-\d.]+)\s*C\s+Humidity:\s*([-\d.]+)\s*%\s+Pressure:\s*([-\d.]+)\s*hPa"
+)
+
+new_file = not os.path.exists(CSV_FILE)
+
+with serial.Serial(PORT, BAUD, timeout=1) as ser, open(CSV_FILE, "a", newline="") as f:
+    writer = csv.writer(f)
+    if new_file:
+        writer.writerow(["time", "temp_c", "humidity_pct", "pressure_hpa"])
+
+    print("Logging... press Ctrl+C to stop")
+    try:
+        while True:
+            line = ser.readline().decode("utf-8", errors="replace").strip()
+            match = PATTERN.match(line)
+            if match:                                   # boot messages don't match, so they're skipped
+                temp, hum, pres = (float(x) for x in match.groups())
+                now = datetime.now().isoformat(timespec="seconds")
+                writer.writerow([now, temp, hum, pres])
+                f.flush()                               # write to disk right away
+                print(now, temp, hum, pres)
+    except KeyboardInterrupt:
+        print("Stopped.")
